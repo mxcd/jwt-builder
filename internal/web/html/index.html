@@ -1,0 +1,261 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="css/pico.min.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>JWT Builder</title>
+    <meta name="description" content="Building and signing JWTs" />
+  </head>
+</html>
+<body>
+  <!-- Header -->
+  <header class="container">
+    <hgroup>
+      <h1>JWT Builder</h1>
+      <p>Building and signing JWTs for development</p>
+    </hgroup>
+    <nav>
+      <ul>
+        <li><a href="#" data-theme-switcher="auto">Auto</a></li>
+        <li><a href="#" data-theme-switcher="light">Light</a></li>
+        <li><a href="#" data-theme-switcher="dark">Dark</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container" id="app">
+    <section id="Presets">
+      <details>
+        <summary role="button" class="outline secondary">Presets</summary>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="preset in presets" :key="preset.name">
+              <td>{{ preset.name }}</td>
+              <td>
+                <nav>
+                  <ul>
+                    <li><a href="#" @click="loadPreset(preset)">Load</a></li>
+                    <li>
+                      <a href="#" @click="updatePreset(preset)">Update</a>
+                    </li>
+                    <li>
+                      <a href="#" @click="deletePreset(preset)">Delete</a>
+                    </li>
+                  </ul>
+                </nav>
+              </td>
+            </tr>
+            <tr>
+              <td></td>
+              <td>
+                <nav>
+                  <ul>
+                    <li>
+                      <a href="#" @click="openNewPresetDialog"
+                        >Save as new preset</a
+                      >
+                    </li>
+                  </ul>
+                </nav>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+    </section>
+    <section id="Claims">
+      <h2>Claims</h2>
+      <p>Enter the claims you want to include in the JWT</p>
+      <form>
+        <div class="grid">
+          <input v-model="sub" type="text" name="sub" placeholder="sub" />
+          <input
+            v-model="givenName"
+            type="text"
+            name="givenName"
+            placeholder="given name"
+          />
+          <input
+            v-model="familyName"
+            type="text"
+            name="familyName"
+            placeholder="family name"
+          />
+          <input
+            v-model="email"
+            type="email"
+            name="email"
+            placeholder="foo@bar.com"
+          />
+        </div>
+      </form>
+      <hr />
+      <button>Copy</button>
+      <hr />
+      <details>
+        <summary role="button" class="outline secondary">Show JWT code</summary>
+        <p style="font-family: monospace">
+          <small> {{ jwt }} </small>
+        </p>
+      </details>
+    </section>
+    <dialog open v-if="newPresetDialog">
+      <article>
+        <h2>Save preset</h2>
+        <p>
+          The current settings will be saved as preset in local storage. Please
+          enter a preset name:
+        </p>
+        <form>
+          <input
+            v-model="newPresetName"
+            type="text"
+            name="presetName"
+            placeholder="Preset name"
+          />
+        </form>
+        <footer>
+          <button @click="closeNewPresetDialog" className="secondary">
+            Cancel
+          </button>
+          <button @click="saveNewPreset">Save</button>
+        </footer>
+      </article>
+    </dialog>
+  </main>
+  <script src="js/minimal-theme-switcher.js"></script>
+  <script src="js/modal.js"></script>
+
+  <script type="module">
+    import { createApp, ref, watch } from "./js/vue.esm-browser.js";
+
+    export function debounce(fn, wait) {
+      let timer;
+      return function (...args) {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        const context = this;
+        timer = setTimeout(() => {
+          fn.apply(context, args);
+        }, wait);
+      };
+    }
+
+    createApp({
+      setup() {
+        const sub = ref("");
+        const email = ref("");
+        const givenName = ref("");
+        const familyName = ref("");
+
+        const jwt = ref("enter claims to generate JWT");
+
+        const change = debounce(generateJwt, 500);
+        watch([sub, email, givenName, familyName], change);
+
+        async function generateJwt() {
+          const data = {};
+
+          if (sub.value !== "") data.sub = sub.value;
+          if (email.value !== "") data.email = email.value;
+          if (givenName.value !== "") data.given_name = givenName.value;
+          if (familyName.value !== "") data.family_name = familyName.value;
+
+          const response = await fetch("/sign", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (response.status !== 200) {
+            console.error("Failed to generate JWT");
+            return;
+          }
+          jwt.value = await response.text();
+        }
+
+        const presets = ref(
+          JSON.parse(localStorage.getItem("presets") || "{}")
+        );
+        console.log(presets.value);
+        const newPresetDialog = ref(false);
+        const newPresetName = ref("");
+
+        function openNewPresetDialog() {
+          newPresetName.value = "";
+          newPresetDialog.value = true;
+        }
+        function closeNewPresetDialog() {
+          newPresetDialog.value = false;
+        }
+
+        function getObjectFromValues(name) {
+          return {
+            name,
+            sub: sub.value,
+            email: email.value,
+            givenName: givenName.value,
+            familyName: familyName.value,
+          };
+        }
+
+        function setValuesFromObject(obj) {
+          sub.value = obj.sub;
+          email.value = obj.email;
+          givenName.value = obj.givenName;
+          familyName.value = obj.familyName;
+        }
+
+        function saveNewPreset() {
+          if (newPresetName.value === "") {
+            return;
+          }
+          closeNewPresetDialog();
+
+          presets.value[newPresetName.value] = getObjectFromValues(
+            newPresetName.value
+          );
+          localStorage.setItem("presets", JSON.stringify(presets.value));
+        }
+        function loadPreset(preset) {
+          setValuesFromObject(preset);
+        }
+        function updatePreset(preset) {
+          presets.value[preset.name] = getObjectFromValues(preset.name);
+          localStorage.setItem("presets", JSON.stringify(presets.value));
+        }
+        function deletePreset(preset) {
+          delete presets.value[preset.name];
+          localStorage.setItem("presets", JSON.stringify(presets.value));
+        }
+
+        return {
+          sub,
+          email,
+          givenName,
+          familyName,
+          jwt,
+          change,
+          presets,
+          newPresetDialog,
+          newPresetName,
+          openNewPresetDialog,
+          closeNewPresetDialog,
+          saveNewPreset,
+          loadPreset,
+          updatePreset,
+          deletePreset,
+        };
+      },
+    }).mount("#app");
+  </script>
+</body>
