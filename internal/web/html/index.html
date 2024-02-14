@@ -24,51 +24,6 @@
     </nav>
   </header>
   <main class="container" id="app">
-    <section id="Presets">
-      <details>
-        <summary role="button" class="outline secondary">Presets</summary>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="preset in presets" :key="preset.name">
-              <td>{{ preset.name }}</td>
-              <td>
-                <nav>
-                  <ul>
-                    <li><a href="#" @click="loadPreset(preset)">Load</a></li>
-                    <li>
-                      <a href="#" @click="updatePreset(preset)">Update</a>
-                    </li>
-                    <li>
-                      <a href="#" @click="deletePreset(preset)">Delete</a>
-                    </li>
-                  </ul>
-                </nav>
-              </td>
-            </tr>
-            <tr>
-              <td></td>
-              <td>
-                <nav>
-                  <ul>
-                    <li>
-                      <a href="#" @click="openNewPresetDialog"
-                        >Save as new preset</a
-                      >
-                    </li>
-                  </ul>
-                </nav>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </details>
-    </section>
     <section id="Claims">
       <h2>Claims</h2>
       <p>Enter the claims you want to include in the JWT</p>
@@ -94,16 +49,88 @@
             placeholder="foo@bar.com"
           />
         </div>
+        <div class="autogrow">
+          <textarea
+            id="content"
+            v-model="additional"
+            name="additional"
+            placeholder="Additional claims in JSON format"
+            onInput="this.parentNode.setAttribute('data-replicated-value', this.value)"
+            onload="this.parentNode.setAttribute('data-replicated-value', this.value)"
+          ></textarea>
+        </div>
+        <article v-if="additionalErrorMessage !== ''">
+          {{ additionalErrorMessage }}
+        </article>
       </form>
       <hr />
-      <button>Copy</button>
-      <hr />
-      <details>
-        <summary role="button" class="outline secondary">Show JWT code</summary>
-        <p style="font-family: monospace">
-          <small> {{ jwt }} </small>
-        </p>
-      </details>
+      <!-- <details> -->
+      <!-- <summary role="button" class="outline secondary">Show JWT code</summary> -->
+      <h2>JWT</h2>
+      <nav v-if="jwt !== ''">
+        <ul>
+          <li>
+            <a href="#" @click="copyWithBearer">{{ copyWithBearerText }}</a>
+          </li>
+          <li>
+            <a href="#" @click="copyWithoutBearer"
+              >{{ copyWithoutBearerText }}</a
+            >
+          </li>
+        </ul>
+      </nav>
+      <p style="font-family: monospace">
+        <small v-if="jwt === ''">enter claims to generate JWT</small>
+        <small> {{ jwt }} </small>
+      </p>
+      <!-- </details> -->
+    </section>
+    <hr />
+    <section id="Presets">
+      <!-- <details> -->
+      <h2>Presets</h2>
+      <!-- <summary role="button" class="outline secondary">Presets</summary> -->
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="preset in presets" :key="preset.name">
+            <td>{{ preset.name }}</td>
+            <td>
+              <nav>
+                <ul>
+                  <li><a href="#" @click="loadPreset(preset)">Load</a></li>
+                  <li>
+                    <a href="#" @click="updatePreset(preset)">Update</a>
+                  </li>
+                  <li>
+                    <a href="#" @click="deletePreset(preset)">Delete</a>
+                  </li>
+                </ul>
+              </nav>
+            </td>
+          </tr>
+          <tr>
+            <td></td>
+            <td>
+              <nav>
+                <ul>
+                  <li>
+                    <a href="#" @click="openNewPresetDialog"
+                      >Save as new preset</a
+                    >
+                  </li>
+                </ul>
+              </nav>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <!-- </details> -->
     </section>
     <dialog open v-if="newPresetDialog">
       <article>
@@ -154,19 +181,40 @@
         const email = ref("");
         const givenName = ref("");
         const familyName = ref("");
+        const additional = ref("");
+        const additionalObject = ref({});
+        const additionalErrorMessage = ref("");
 
-        const jwt = ref("enter claims to generate JWT");
+        const jwt = ref("");
 
         const change = debounce(generateJwt, 500);
-        watch([sub, email, givenName, familyName], change);
+        watch([sub, email, givenName, familyName, additional], change);
 
         async function generateJwt() {
-          const data = {};
+          if (additional.value !== "") {
+            try {
+              additionalObject.value = JSON.parse(additional.value);
+              additionalErrorMessage.value = "";
+            } catch (e) {
+              additionalErrorMessage.value = e.message;
+              return;
+            }
+          } else {
+            additionalObject.value = {};
+            additionalErrorMessage.value = "";
+          }
+
+          const data = additionalObject.value;
 
           if (sub.value !== "") data.sub = sub.value;
           if (email.value !== "") data.email = email.value;
           if (givenName.value !== "") data.given_name = givenName.value;
           if (familyName.value !== "") data.family_name = familyName.value;
+
+          if (Object.keys(data).length === 0) {
+            jwt.value = "";
+            return;
+          }
 
           const response = await fetch("./sign", {
             method: "POST",
@@ -204,6 +252,8 @@
             email: email.value,
             givenName: givenName.value,
             familyName: familyName.value,
+            additionalObject: additionalObject.value,
+            additional: additional.value,
           };
         }
 
@@ -212,6 +262,8 @@
           email.value = obj.email;
           givenName.value = obj.givenName;
           familyName.value = obj.familyName;
+          additional.value = obj.additional;
+          additionalObject.value = obj.additionalObject;
         }
 
         function saveNewPreset() {
@@ -237,11 +289,31 @@
           localStorage.setItem("presets", JSON.stringify(presets.value));
         }
 
+        const copyWithBearerText = ref('Copy with "Bearer"');
+        const copyWithoutBearerText = ref('Copy without "Bearer"');
+        function displayCopiedText(text) {
+          const defaultValue = text.value;
+          text.value = "Copied!";
+          setTimeout(() => {
+            text.value = defaultValue;
+          }, 1000);
+        }
+        function copyWithBearer() {
+          navigator.clipboard.writeText(`Bearer ${jwt.value}`);
+          displayCopiedText(copyWithBearerText);
+        }
+        function copyWithoutBearer() {
+          navigator.clipboard.writeText(jwt.value);
+          displayCopiedText(copyWithoutBearerText);
+        }
+
         return {
           sub,
           email,
           givenName,
           familyName,
+          additional,
+          additionalErrorMessage,
           jwt,
           change,
           presets,
@@ -253,8 +325,35 @@
           loadPreset,
           updatePreset,
           deletePreset,
+          copyWithBearer,
+          copyWithoutBearer,
+          copyWithBearerText,
+          copyWithoutBearerText,
         };
       },
     }).mount("#app");
   </script>
+  <style>
+    .autogrow {
+      display: grid;
+    }
+
+    .autogrow::after {
+      content: attr(data-replicated-value) " ";
+      white-space: pre-wrap;
+      visibility: hidden;
+      padding: 30px;
+    }
+
+    .autogrow > textarea {
+      resize: none;
+      font-family: monospace;
+    }
+
+    .autogrow > textarea,
+    .autogrow::after {
+      /* Add textarea styles here so that the textarea and div look the same */
+      grid-area: 1 / 1 / 2 / 2;
+    }
+  </style>
 </body>
