@@ -127,7 +127,12 @@ func main() {
 		w.Write(signedToken)
 	})
 
-	http.HandleFunc("/", web.GetHandleFunc())
+	webFileHandler := web.GetHandleFunc()
+	if !config.Get().Bool("DEV") {
+		webFileHandler = web.CacheControlMiddleware(webFileHandler)
+	}
+
+	http.Handle("/", webFileHandler)
 
 	log.Info().Msg("starting server")
 	portString := fmt.Sprintf(":%d", config.Get().Int("PORT"))

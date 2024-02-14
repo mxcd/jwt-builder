@@ -133,7 +133,7 @@
   <script src="js/modal.js"></script>
 
   <script type="module">
-    import { createApp, ref, watch } from "./js/vue.esm-browser.js";
+    import { createApp, ref, watch } from "./js/vue.esm-browser.prod.js";
 
     export function debounce(fn, wait) {
       let timer;
@@ -186,7 +186,6 @@
         const presets = ref(
           JSON.parse(localStorage.getItem("presets") || "{}")
         );
-        console.log(presets.value);
         const newPresetDialog = ref(false);
         const newPresetName = ref("");
 
