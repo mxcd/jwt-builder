@@ -204,7 +204,7 @@
             additionalErrorMessage.value = "";
           }
 
-          const data = additionalObject.value;
+          const data = { ...additionalObject.value };
 
           if (sub.value !== "") data.sub = sub.value;
           if (email.value !== "") data.email = email.value;
@@ -253,7 +253,6 @@
             givenName: givenName.value,
             familyName: familyName.value,
             additionalObject: additionalObject.value,
-            additional: additional.value,
           };
         }
 
@@ -262,7 +261,7 @@
           email.value = obj.email;
           givenName.value = obj.givenName;
           familyName.value = obj.familyName;
-          additional.value = obj.additional;
+          additional.value = JSON.stringify(obj.additionalObject, null, 2);
           additionalObject.value = obj.additionalObject;
         }
 
