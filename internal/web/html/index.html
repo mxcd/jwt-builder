@@ -261,8 +261,10 @@
           email.value = obj.email;
           givenName.value = obj.givenName;
           familyName.value = obj.familyName;
-          additional.value = JSON.stringify(obj.additionalObject, null, 2);
           additionalObject.value = obj.additionalObject;
+          if (Object.keys(obj.additionalObject).length !== 0) {
+            additional.value = JSON.stringify(obj.additionalObject, null, 2);
+          }
         }
 
         function saveNewPreset() {
