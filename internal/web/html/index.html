@@ -264,6 +264,8 @@
           additionalObject.value = obj.additionalObject;
           if (Object.keys(obj.additionalObject).length !== 0) {
             additional.value = JSON.stringify(obj.additionalObject, null, 2);
+          } else {
+            additional.value = "";
           }
         }
 
