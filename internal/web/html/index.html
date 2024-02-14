@@ -1,6 +1,6 @@
 <html>
   <head>
-    <link rel="stylesheet" href="css/pico.min.css" />
+    <link rel="stylesheet" href="./css/pico.min.css" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
@@ -168,7 +168,7 @@
           if (givenName.value !== "") data.given_name = givenName.value;
           if (familyName.value !== "") data.family_name = familyName.value;
 
-          const response = await fetch("/sign", {
+          const response = await fetch("./sign", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
