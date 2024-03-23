@@ -89,7 +89,22 @@ func main() {
 		w.Write(jwks)
 	})
 
-	http.HandleFunc("/sign", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/sign", getSignHandler(jwkPrivateKey))
+
+	webFileHandler := web.GetHandleFunc()
+	if !config.Get().Bool("DEV") {
+		webFileHandler = web.CacheControlMiddleware(webFileHandler)
+	}
+
+	http.Handle("/", webFileHandler)
+
+	log.Info().Msg("starting server")
+	portString := fmt.Sprintf(":%d", config.Get().Int("PORT"))
+	http.ListenAndServe(portString, nil)
+}
+
+func getSignHandler(jwkPrivateKey jwk.Key) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -125,16 +140,5 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write(signedToken)
-	})
-
-	webFileHandler := web.GetHandleFunc()
-	if !config.Get().Bool("DEV") {
-		webFileHandler = web.CacheControlMiddleware(webFileHandler)
 	}
-
-	http.Handle("/", webFileHandler)
-
-	log.Info().Msg("starting server")
-	portString := fmt.Sprintf(":%d", config.Get().Int("PORT"))
-	http.ListenAndServe(portString, nil)
 }
