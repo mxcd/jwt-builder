@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/rs/zerolog/log"
 
@@ -132,7 +133,10 @@ func getSignHandler(jwkPrivateKey jwk.Key) http.HandlerFunc {
 			}
 		}
 
-		signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.RS512, jwkPrivateKey))
+		hdrs := jws.NewHeaders()
+		hdrs.Set(jws.JWKSetURLKey, fmt.Sprintf("%s/JWKS", config.Get().String("JWT_ISSUER")))
+
+		signedToken, err := jwt.Sign(token, jwt.WithKey(jwa.RS512, jwkPrivateKey, jws.WithProtectedHeaders(hdrs)))
 		if err != nil {
 			log.Error().Err(err).Msg("failed to sign JWT")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
