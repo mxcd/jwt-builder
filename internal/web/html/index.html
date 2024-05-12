@@ -187,6 +187,8 @@
 
         const jwt = ref("");
 
+        let timeout = null;
+
         const change = debounce(generateJwt, 500);
         watch([sub, email, givenName, familyName, additional], change);
 
@@ -229,6 +231,11 @@
             return;
           }
           jwt.value = await response.text();
+
+          if (timeout) {
+            clearTimeout(timeout);
+          }
+          timeout = setTimeout(generateJwt, 1000 * 60 * 5);
         }
 
         const presets = ref(
